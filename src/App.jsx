@@ -46,7 +46,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState('editor'); // 'editor' | 'summary'
 
   const [noteTitle, setNoteTitle] = useState(() => {
-    return localStorage.getItem('noteTitle') || 'Neural Interface Latency Analysis';
+    return localStorage.getItem('noteTitle') || '';
   });
 
   const [noteContent, setNoteContent] = useState(() => {
@@ -71,9 +71,6 @@ export default function App() {
     return saved ? parseInt(saved, 10) : 0;
   });
 
-  // Undo/Redo Stacks
-  const [undoStack, setUndoStack] = useState([]);
-  const [redoStack, setRedoStack] = useState([]);
 
   // Session Statistics
   const [sessionStats, setSessionStats] = useState({
@@ -87,16 +84,11 @@ export default function App() {
 
   // Refs for callbacks
   const contentRef = useRef(noteContent);
-  const undoStackRef = useRef(undoStack);
   const themeRef = useRef(theme);
 
   useEffect(() => {
     contentRef.current = noteContent;
   }, [noteContent]);
-
-  useEffect(() => {
-    undoStackRef.current = undoStack;
-  }, [undoStack]);
 
   useEffect(() => {
     themeRef.current = theme;
@@ -172,50 +164,6 @@ export default function App() {
     addTelemetryLog('SYSTEM', `UI theme changed to: ${nextTheme.toUpperCase()}`);
   }, [addTelemetryLog, speakFeedback]);
 
-  // --- 6. Undo/Redo Engine ---
-  const updateContentWithUndo = useCallback((newContent, saveToHistory = true) => {
-    const currentText = contentRef.current;
-    if (newContent === currentText) return;
-
-    if (saveToHistory) {
-      setUndoStack((prev) => [...prev, currentText]);
-      setRedoStack([]);
-    }
-    setNoteContent(newContent);
-  }, []);
-
-  const handleUndo = useCallback(() => {
-    const currentUndo = undoStackRef.current;
-    if (currentUndo.length === 0) {
-      speakFeedback('Nothing to undo');
-      addTelemetryLog('SYSTEM', 'Undo requested, but history buffer is empty.');
-      return;
-    }
-
-    const previousState = currentUndo[currentUndo.length - 1];
-    setRedoStack((prev) => [...prev, contentRef.current]);
-    setNoteContent(previousState);
-    setUndoStack((prev) => prev.slice(0, -1));
-
-    speakFeedback('Action undone');
-    addTelemetryLog('COMMAND', 'command undo executed successfully.');
-  }, [speakFeedback, addTelemetryLog]);
-
-  const handleRedo = useCallback(() => {
-    if (redoStack.length === 0) {
-      speakFeedback('Nothing to redo');
-      addTelemetryLog('SYSTEM', 'Redo requested, but reverted history buffer is empty.');
-      return;
-    }
-
-    const nextState = redoStack[redoStack.length - 1];
-    setUndoStack((prev) => [...prev, contentRef.current]);
-    setNoteContent(nextState);
-    setRedoStack((prev) => prev.slice(0, -1));
-
-    speakFeedback('Action redone');
-    addTelemetryLog('COMMAND', 'command redo executed successfully.');
-  }, [redoStack, speakFeedback, addTelemetryLog]);
 
   // Text utilities
   const eraseLastWord = (str) => {
@@ -230,7 +178,7 @@ export default function App() {
 
     // 1. command insert line
     if (lowerText === 'command insert line') {
-      updateContentWithUndo(currentText + '\n');
+      setNoteContent(currentText + '\n');
       speakFeedback('Line inserted');
       addTelemetryLog('COMMAND', 'command insert line executed.');
       setSessionStats(prev => ({ ...prev, commandsExecuted: prev.commandsExecuted + 1 }));
@@ -240,7 +188,7 @@ export default function App() {
     // 2. command erase word
     if (lowerText === 'command erase word') {
       const updated = eraseLastWord(currentText);
-      updateContentWithUndo(updated);
+      setNoteContent(updated);
       speakFeedback('Word deleted');
       addTelemetryLog('COMMAND', 'command erase word executed. Last word removed.');
       setSessionStats(prev => ({ ...prev, commandsExecuted: prev.commandsExecuted + 1 }));
@@ -261,7 +209,7 @@ export default function App() {
 
     // 6. command clear note
     if (lowerText === 'command clear note') {
-      updateContentWithUndo('');
+      setNoteContent('');
       setDuration(0);
       speakFeedback('Note cleared');
       addTelemetryLog('COMMAND', 'command clear note executed. Content wiped.');
@@ -281,7 +229,7 @@ export default function App() {
       const dateOptions = { day: 'numeric', month: 'long', year: 'numeric' };
       const formattedDate = new Date().toLocaleDateString('en-US', dateOptions);
       const space = (currentText === '' || currentText.endsWith('\n') || currentText.endsWith(' ')) ? '' : ' ';
-      updateContentWithUndo(currentText + space + formattedDate);
+      setNoteContent(currentText + space + formattedDate);
       speakFeedback('Date inserted');
       addTelemetryLog('COMMAND', `command insert date executed. Inserted "${formattedDate}".`);
       setSessionStats(prev => ({ ...prev, commandsExecuted: prev.commandsExecuted + 1 }));
@@ -293,7 +241,7 @@ export default function App() {
       const timeOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
       const formattedTime = new Date().toLocaleTimeString('en-US', timeOptions);
       const space = (currentText === '' || currentText.endsWith('\n') || currentText.endsWith(' ')) ? '' : ' ';
-      updateContentWithUndo(currentText + space + formattedTime);
+      setNoteContent(currentText + space + formattedTime);
       speakFeedback('Time inserted');
       addTelemetryLog('COMMAND', `command insert time executed. Inserted "${formattedTime}".`);
       setSessionStats(prev => ({ ...prev, commandsExecuted: prev.commandsExecuted + 1 }));
@@ -312,7 +260,7 @@ export default function App() {
     const punctuatedText = autoPunctuate(rawText, currentText);
     const space = (currentText === '' || currentText.endsWith('\n')) ? '' : ' ';
     const newContent = currentText + space + punctuatedText;
-    updateContentWithUndo(newContent);
+    setNoteContent(newContent);
     addTelemetryLog('SUCCESS', `Dictated: "${punctuatedText}"`);
 
     const wordCount = punctuatedText.trim().split(/\s+/).filter(Boolean).length;
@@ -321,7 +269,7 @@ export default function App() {
       wordsDictated: prev.wordsDictated + wordCount,
       charactersWritten: prev.charactersWritten + punctuatedText.length
     }));
-  }, [handleUndo, handleRedo, toggleTheme, speakFeedback, addTelemetryLog, updateContentWithUndo]);
+  }, [toggleTheme, speakFeedback, addTelemetryLog]);
 
   const handleInterimTranscript = useCallback((text) => {
     setInterimTranscript(text);
@@ -543,7 +491,7 @@ export default function App() {
               {/* Text Editor */}
               <TextOutputEditor
                 content={noteContent}
-                onChangeContent={(text) => updateContentWithUndo(text, true)}
+                onChangeContent={setNoteContent}
                 interimTranscript={interimTranscript}
                 isListening={isListening}
                 addTelemetryLog={addTelemetryLog}
