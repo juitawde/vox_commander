@@ -13,6 +13,7 @@ import VoiceSpectrogram from './components/VoiceSpectrogram';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTelemetry } from './hooks/useTelemetry';
+import { useAudioAnalyser } from './hooks/useAudioAnalyser';
 
 // Services
 import { speakFeedback } from './services/speechFeedback';
@@ -131,60 +132,7 @@ export default function App() {
   }, [isMuted, isListening, addTelemetryLog]);
 
   // --- 5. Web Audio API Analyser ---
-  const audioContextRef = useRef(null);
-  const analyserRef = useRef(null);
-  const animationFrameRef = useRef(null);
-  const streamRef = useRef(null);
-
-  useEffect(() => {
-    if (isListening) {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-        streamRef.current = stream;
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const audioContext = new AudioContext();
-        const source = audioContext.createMediaStreamSource(stream);
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 64;
-        source.connect(analyser);
-
-        audioContextRef.current = audioContext;
-        analyserRef.current = analyser;
-
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-
-        const updateBars = () => {
-          if (!analyserRef.current) return;
-          analyserRef.current.getByteFrequencyData(dataArray);
-
-          const bars = document.querySelectorAll('.audio-wave .bar');
-          if (bars && bars.length > 0) {
-            for (let i = 0; i < bars.length; i++) {
-              const dataIndex = Math.min(i, bufferLength - 1);
-              const val = dataArray[dataIndex] / 255;
-              const scaleY = 1.0 + (val * 7.5);
-              bars[i].style.transform = `scaleY(${scaleY})`;
-            }
-          }
-          animationFrameRef.current = requestAnimationFrame(updateBars);
-        };
-        updateBars();
-      }).catch((err) => console.warn('Audio analyser initiation failed:', err));
-    } else {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-      if (audioContextRef.current) audioContextRef.current.close().catch(() => { });
-      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-
-      const bars = document.querySelectorAll('.audio-wave .bar');
-      if (bars) bars.forEach(b => { b.style.transform = 'scaleY(1)'; });
-    }
-
-    return () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-      if (audioContextRef.current) { try { audioContextRef.current.close(); } catch (e) { } }
-      if (streamRef.current) { try { streamRef.current.getTracks().forEach(t => t.stop()); } catch (e) { } }
-    };
-  }, [isListening]);
+  const { analyserRef } = useAudioAnalyser(isListening);
 
   // --- 6. Export Handlers ---
   const onExportTXT = () => handleExportTXT(noteTitle, noteContent, addTelemetryLog);
