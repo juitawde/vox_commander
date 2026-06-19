@@ -9,13 +9,20 @@ export function autoPunctuate(rawText, previousText) {
   let text = rawText.trim();
 
   // 3. Capitalize standalone "i" to "I"
-  text = text.replace(/\bi\b/g, 'I');
+  text = text.replace(/\bi\b/g, 'I'); //pattern = \bi\b , flag = g
+  //g = global
+  //  means: “replace ALL matches, not just first one”
+  //word boundary + i + word boundary- \bi\b
 
   // 4. Capitalize first letter of every sentence
   text = text.replace(/(^|[.!?]\s+)([a-z])/g, (match, separator, letter) => {
     return separator + letter.toUpperCase();
   });
 
+  //([a-z]) matches the first lowercase letter after punctuation
+  //^ start of string
+  // . ! ? followed by spaces
+  
   return text;
 }
 

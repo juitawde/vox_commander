@@ -5,24 +5,25 @@ export default function SessionSummaryPage({ stats, onExportPDF, onDownloadLogs,
   const formatDuration = (totalSeconds) => {
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    return `${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+    return `${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`; //padStart(2, '0')? Ensures formatting always has 2 digits: 5 → 05, 2 → 02
   };
 
   const getFormattedTimestamp = () => {
     const d = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    //YYYY-MM-DD HH:MM:SS, Example: 2026-06-20 01:45:30
   };
 
-  const confidence = stats.confidence || 0.94;
-  const confidencePercent = Math.round(confidence * 100);
+  const confidence = stats.confidence || 0.94; // Default to 94% if confidence is not provided
+  const confidencePercent = Math.round(confidence * 100); // Convert to percentage
 
   // SVG radial dial
-  const radius = 72;
-  const stroke = 7;
-  const normalizedRadius = radius - stroke * 2;
-  const circumference = normalizedRadius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (confidencePercent / 100) * circumference;
+  const radius = 72; // Radius of the circle in pixels
+  const stroke = 7; // Stroke width of the circle in pixels
+  const normalizedRadius = radius - stroke * 2; // Adjusted radius to account for stroke width, ensuring the stroke is fully visible within the SVG viewbox
+  const circumference = normalizedRadius * 2 * Math.PI; // Circumference of the circle, used for stroke-dasharray and stroke-dashoffset to create the progress effect
+  const strokeDashoffset = circumference - (confidencePercent / 100) * circumference; // Calculate the stroke-dashoffset based on the confidence percentage, creating the visual effect of a progress arc on the radial dial
 
   const metrics = [
     { icon: <Clock size={18} />, label: 'Session Duration', value: formatDuration(stats.duration), color: 'cyan' },

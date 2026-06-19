@@ -2,13 +2,13 @@ import React from 'react';
 import { Grid3X3, Mic } from 'lucide-react';
 
 const COMMANDS = [
-  { phrase: 'INSERT LINE', color: 'text-cyan' },
-  { phrase: 'ERASE WORD', color: 'text-red' },
-  { phrase: 'TITLE [TEXT]', color: 'text-blue' },
-  { phrase: 'TOGGLE THEME', color: 'text-green' },
-  { phrase: 'INSERT DATE', color: 'text-cyan' },
-  { phrase: 'INSERT TIME', color: 'text-cyan' },
-  { phrase: 'CLEAR NOTE', color: 'text-red' }
+  { phrase: 'INSERT LINE' },
+  { phrase: 'ERASE WORD'},
+  { phrase: 'TITLE [TEXT]' },
+  { phrase: 'TOGGLE THEME' },
+  { phrase: 'INSERT DATE' },
+  { phrase: 'INSERT TIME' },
+  { phrase: 'CLEAR NOTE' }
 ];
 
 export default function CommandRegistry({ isListening, startListening }) {
@@ -28,7 +28,7 @@ export default function CommandRegistry({ isListening, startListening }) {
         <h4 className="keyword-matrix-title">Keyword Matrix</h4>
         <div className="keyword-tags">
           {COMMANDS.map((cmd, i) => (
-            <span key={i} className="keyword-tag">{cmd.phrase}</span>
+            <span key={i} className="keyword-tag">{cmd.phrase} </span> // The color classes (e.g. text-cyan) can be used to style the tags differently based on command type or category, but for simplicity they are not applied here. You can easily add them back by including `className={`keyword-tag ${cmd.color}`}` if you want color differentiation.
           ))}
         </div>
       </div>

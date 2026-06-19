@@ -1,8 +1,7 @@
-export const buildSummaryStats = (duration, sessionStats, charactersWritten, errorsCount, confidence) => ({
+export const buildSummaryStats = (duration, sessionStats, charactersWritten, confidence) => ({
   duration: duration,
   wordsDictated: sessionStats.wordsDictated,
   commandsExecuted: sessionStats.commandsExecuted,
   charactersWritten: charactersWritten,
-  errorsCount: errorsCount,
   confidence: confidence
 });

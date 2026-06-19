@@ -2,15 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 
 export const useSpeechRecognition = ({ onFinalTranscript, onInterimTranscript }) => {
   const [isListening, setIsListening] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [confidence, setConfidence] = useState(1);
-  const [browserSupportsSpeech, setBrowserSupportsSpeech] = useState(false);
-  const recognitionRef = useRef(null);
-  const shouldListenRef = useRef(false);
-  const isMutedRef = useRef(false);
-  const silenceTimeoutRef = useRef(null);
+  const [isMuted, setIsMuted] = useState(false); //muted means we're still listening but ignoring input (used for pause/resume without restarting engine)
+  const [confidence, setConfidence] = useState(1); //how accurate speech recognition is (0–1)
+  const [browserSupportsSpeech, setBrowserSupportsSpeech] = useState(false); //detect if browser supports Web Speech API
+  const recognitionRef = useRef(null); //stores SpeechRecognition object
+  const shouldListenRef = useRef(false); //important for auto-restart logic
+  const isMutedRef = useRef(false); //avoids stale state inside async events and allows mute state to persist across restarts without affecting onFinalTranscript callback logic
+  const silenceTimeoutRef = useRef(null); //stores timer for “silence detection”
 
-  // Keep references to callbacks to prevent SpeechRecognition from restarting when they change
+  // Because callbacks change every render in React. So we store latest version here to avoid: stale closures, broken speech engine callbacks
   const onFinalTranscriptRef = useRef(onFinalTranscript);
   const onInterimTranscriptRef = useRef(onInterimTranscript);
 
@@ -43,15 +43,16 @@ export const useSpeechRecognition = ({ onFinalTranscript, onInterimTranscript })
   };
 
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; //SpeechRecognition-	standard API, webkitSpeechRecognition-	Chrome-specific fallback
     if (SpeechRecognition) {
       setBrowserSupportsSpeech(true);
-      const rec = new SpeechRecognition();
-      rec.continuous = true;
-      rec.interimResults = true;
-      rec.lang = 'en-US';
+      //This creates a real browser object in memory
+      const rec = new SpeechRecognition(); //creates a new microphone listener instance
+      rec.continuous = true; //keeps listening until explicitly stopped
+      rec.interimResults = true; //gives live partial results
+      rec.lang = 'en-US'; //set language to US English
 
-      rec.onresult = (event) => {
+      rec.onresult = (event) => { //fires whenever speech is detected or updated
         resetSilenceTimeout(); // Reset timer upon receiving speech results
 
         // If muted, discard all results silently
@@ -61,24 +62,25 @@ export const useSpeechRecognition = ({ onFinalTranscript, onInterimTranscript })
         let accumulatedFinalText = '';
         let lastConfidence = 1;
 
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const result = event.results[i];
+        //processes only new speech results not old ones
+        for (let i = event.resultIndex; i < event.results.length; ++i) { // ++i preincrements i before using it, but here it behaves the same as i++ since it's in a for loop
+          const result = event.results[i]; //single speech chunk
           if (result.isFinal) {
-            accumulatedFinalText += (accumulatedFinalText ? ' ' : '') + result[0].transcript;
-            lastConfidence = result[0].confidence;
+            accumulatedFinalText += (accumulatedFinalText ? ' ' : '') + result[0].transcript; //transcript is the speech-to-text output.
+            lastConfidence = result[0].confidence; //how accurate speech was (0–1)
           } else {
             interimText += result[0].transcript;
           }
         }
 
-        if (accumulatedFinalText && onFinalTranscriptRef.current) {
-          onFinalTranscriptRef.current(accumulatedFinalText.trim(), lastConfidence);
+        if (accumulatedFinalText && onFinalTranscriptRef.current) { //check both because no sending empty text, no calling undefined function
+          onFinalTranscriptRef.current(accumulatedFinalText.trim(), lastConfidence); //Sends data back to App.jsx
         }
         if (onInterimTranscriptRef.current) {
-          onInterimTranscriptRef.current(interimText);
+          onInterimTranscriptRef.current(interimText); //send live speech updates back to App.jsx for real-time display
         }
         if (lastConfidence > 0) {
-          setConfidence(lastConfidence);
+          setConfidence(lastConfidence); //ensure valid confidence score
         }
       };
 
@@ -93,8 +95,8 @@ export const useSpeechRecognition = ({ onFinalTranscript, onInterimTranscript })
       rec.onend = () => {
         // Restart speech recognition automatically if user still wants it active
         if (shouldListenRef.current) {
-          setTimeout(() => {
-            if (shouldListenRef.current && recognitionRef.current) {
+          setTimeout(() => { //small delay before restart (300ms) to avoid rapid restart loops, avoids browser crash
+            if (shouldListenRef.current && recognitionRef.current) { //Double safety check: still supposed to listen then engine exists
               try {
                 recognitionRef.current.start();
               } catch (e) {
@@ -103,31 +105,48 @@ export const useSpeechRecognition = ({ onFinalTranscript, onInterimTranscript })
             }
           }, 300);
         } else {
-          setIsListening(false);
+          setIsListening(false); //user has stopped listening manually
+          //reset mute state completely
           setIsMuted(false);
           isMutedRef.current = false;
           if (silenceTimeoutRef.current) {
-            clearTimeout(silenceTimeoutRef.current);
+            clearTimeout(silenceTimeoutRef.current); //No need anymore because mic is OFF
           }
         }
       };
 
+      //This runs whenever speech recognition fails.
       rec.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
-        if (event.error === 'not-allowed') {
+        if (event.error === 'not-allowed') { //special case: user denied microphone access
           shouldListenRef.current = false;
           setIsListening(false);
           setIsMuted(false);
           isMutedRef.current = false;
         }
         // Let it proceed to onend where it will attempt a clean restart if allowed
+        //error tells me what happened, but onend tells me the final state
+        //START → LISTEN → RESULT → ERROR? → END → RESTART?
+        //Even when onerror fires, the Web Speech API still proceeds to onend as part of its lifecycle termination.
       };
 
-      recognitionRef.current = rec;
+      recognitionRef.current = rec; //save SpeechRecognition object globally so start, stop, restart can be called from anywhere in this hook
     } else {
       setBrowserSupportsSpeech(false);
     }
 
+//     CONTROL layer:(called by App.jsx)
+//     startListening
+//     stopListening
+//     restart logic
+//     EVENT layer:(called by Web Speech API)
+//     onresult
+//     onerror
+//     onend
+//     onstart
+
+
+    //Cleanup function begins..its required otherwise microphone keeps running, memory leaks, duplicate event listeners, crashes on remount 
     return () => {
       if (silenceTimeoutRef.current) {
         clearTimeout(silenceTimeoutRef.current);
@@ -199,3 +218,20 @@ export const useSpeechRecognition = ({ onFinalTranscript, onInterimTranscript })
     resumeListening
   };
 };
+
+//whole flowchart:
+// START
+//   ↓
+// LISTENING
+//   ↓
+// onresult → App.jsx updates
+//   ↓
+// MUTE (ignore results)
+//   ↓
+// RESUME (process again)
+//   ↓
+// STOP (engine stops)
+//   ↓
+// onend
+//   ↓
+// START AGAIN (reuse same engine)

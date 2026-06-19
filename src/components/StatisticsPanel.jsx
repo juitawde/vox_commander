@@ -4,8 +4,7 @@ import { Type, FileText, AlignLeft, Clock } from 'lucide-react';
 export default function StatisticsPanel({ content, duration, confidence }) {
   const characterCount = content.length;
   const wordCount = content.trim() === '' ? 0 : content.trim().split(/\s+/).filter(Boolean).length;
-  const paragraphCount = content.trim() === '' ? 0 : content.split('\n').filter(p => p.trim() !== '').length;
-
+  
   const formatDuration = (totalSeconds) => {
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
@@ -34,8 +33,8 @@ export default function StatisticsPanel({ content, duration, confidence }) {
           <AlignLeft className="icon-sm" />
         </div>
         <div className="stat-info">
-          <span className="stat-value">{paragraphCount}</span>
-          <span className="stat-label">Paragraphs</span>
+          <span className="stat-value">{wordCount}</span>
+          <span className="stat-label">Words</span>
         </div>
       </div>
 

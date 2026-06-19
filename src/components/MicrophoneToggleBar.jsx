@@ -13,7 +13,7 @@ export default function MicrophoneToggleBar({ isListening, isMuted, startListeni
           <div className="mic-state">
             {isListening ? (
               <>
-                <span className="live-badge" style={{ opacity: isMuted ? 0.6 : 1 }}>
+                <span className="live-badge" style={{ opacity: isMuted ? 0.6 : 1 }}> 
                   {isMuted ? 'MUTED' : 'LIVE'}
                 </span>
               </>

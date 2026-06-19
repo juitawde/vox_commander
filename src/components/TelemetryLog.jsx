@@ -14,8 +14,8 @@ export default function TelemetryLog({ logs, isListening, confidence, duration, 
   const startHeightRef = useRef(DEFAULT_HEIGHT);
 
   useEffect(() => {
-    if (activeTab === 'telemetry' && terminalBottomRef.current) {
-      terminalBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (activeTab === 'telemetry' && terminalBottomRef.current) { // Auto-scroll to bottom when new logs arrive or when switching back to telemetry tab
+      terminalBottomRef.current.scrollIntoView({ behavior: 'smooth' }); // Scrolls the terminal view to the bottom smoothly whenever logs change or when the telemetry tab becomes active, ensuring the latest log entries are always visible to the user without manual scrolling.
     }
   }, [logs, activeTab]);
 
@@ -29,20 +29,20 @@ export default function TelemetryLog({ logs, isListening, confidence, duration, 
 
   // ── Drag-to-resize handlers ──
   const onMouseDown = useCallback((e) => {
-    e.preventDefault();
+    e.preventDefault(); // Prevent text selection and other default behaviors while dragging
     isDraggingRef.current = true;
-    startYRef.current = e.clientY;
+    startYRef.current = e.clientY; //Stores initial mouse Y position when the drag starts, used to calculate how far the mouse has moved during dragging.
     startHeightRef.current = panelHeight;
-    document.body.style.cursor = 'ns-resize';
-    document.body.style.userSelect = 'none';
-  }, [panelHeight]);
+    document.body.style.cursor = 'ns-resize'; //Changes cursor to vertical resize icon
+    document.body.style.userSelect = 'none'; //Prevents text selection while dragging
+  }, [panelHeight]); //Dependency: uses latest panel height..recreation of function only when panelheight changes
 
   useEffect(() => {
     const onMouseMove = (e) => {
       if (!isDraggingRef.current) return;
       // Dragging up = panel grows (clientY decreases)
-      const delta = startYRef.current - e.clientY;
-      const newHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, startHeightRef.current + delta));
+      const delta = startYRef.current - e.clientY; 
+      const newHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, startHeightRef.current + delta)); //prevents going below min height and prevents going above max height 
       setPanelHeight(newHeight);
     };
 
@@ -54,13 +54,15 @@ export default function TelemetryLog({ logs, isListening, confidence, duration, 
       }
     };
 
+    //listens globally so drag works even outside component
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
+    // Cleanup listeners on unmount
     return () => {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
-  }, []);
+  }, []); //since no dependencies, this effect runs only once on mount and sets up the global mouse event listeners for dragging, and cleans them up on unmount.
 
   return (
     <div className="telemetry-console" style={{ height: panelHeight }}>

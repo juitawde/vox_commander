@@ -32,7 +32,6 @@ export default function App() {
   const [noteTitle, setNoteTitle] = useLocalStorage('noteTitle', '');
   const [noteContent, setNoteContent] = useLocalStorage('noteContent', '');
   const [theme, setTheme] = useLocalStorage('theme', 'dark');
-  const [errorsCount, setErrorsCount] = useLocalStorage('errorsCount', 0);
 
   const [duration, setDuration] = useState(0);
   const [sessionStats, setSessionStats] = useState({
@@ -81,10 +80,9 @@ export default function App() {
       setDuration,
       toggleTheme,
       addTelemetryLog,
-      setSessionStats,
-      setErrorsCount
+      setSessionStats
     });
-  }, [setNoteContent, setNoteTitle, toggleTheme, addTelemetryLog, setErrorsCount]);
+  }, [setNoteContent, setNoteTitle, toggleTheme, addTelemetryLog]);
 
   const handleInterimTranscript = useCallback((text) => {
     setInterimTranscript(text);
@@ -107,27 +105,27 @@ export default function App() {
 
   // Track duration
   useEffect(() => {
-    if (isListening) {
-      setDuration(0);
-      const interval = setInterval(() => {
+    if (isListening) { //When mic turns ON: start timer
+      setDuration(0); //reset timer to 0 seconds
+      const interval = setInterval(() => { 
         setDuration((prev) => prev + 1);
       }, 1000);
-      return () => clearInterval(interval);
+      return () => clearInterval(interval); //isListening becomes false
     }
   }, [isListening]);
 
   // Log engine events
   useEffect(() => {
-    if (isListening) {
+    if (isListening) { //When mic turns ON
       addTelemetryLog('SYSTEM', 'Continuous Speech Recognition engine started. Listening...');
-    } else {
+    } else { //When mic turns OFF
       addTelemetryLog('SYSTEM', 'Speech Recognition engine went to standby mode.');
     }
   }, [isListening, addTelemetryLog]);
 
   useEffect(() => {
     if (isListening) {
-      addTelemetryLog('SYSTEM', `Speech Recognition engine ${isMuted ? 'muted (input paused)' : 'resumed (input active)'}.`);
+      addTelemetryLog('SYSTEM', `Speech Recognition engine ${isMuted ? 'muted (input paused)' : 'resumed (input active)'}.`); //When mic is ON and user clicks MUTE or RESUME
     }
   }, [isMuted, isListening, addTelemetryLog]);
 
@@ -143,13 +141,14 @@ export default function App() {
   };
   const onDownloadLogs = () => handleDownloadLogs(telemetryLogs, addTelemetryLog);
 
-  const summaryStats = buildSummaryStats(duration, sessionStats, noteContent.length, errorsCount, confidence);
+  const summaryStats = buildSummaryStats(duration, sessionStats, noteContent.length, confidence);
 
   return (
     <div className="app-layout">
       <Header
+      // pass props to header for theme toggle, export buttons, navigation, and mic status indicator
         theme={theme}
-        toggleTheme={toggleTheme}
+        toggleTheme={toggleTheme} 
         onExportPDF={onExportPDF}
         onExportTXT={onExportTXT}
         currentView={currentView}
@@ -186,6 +185,7 @@ export default function App() {
                 addTelemetryLog={addTelemetryLog}
               />
               <StatisticsPanel content={noteContent} duration={duration} confidence={confidence} />
+
               {isListening && (
                 <VoiceSpectrogram isListening={isListening} isMuted={isMuted} analyserRef={analyserRef} />
               )}

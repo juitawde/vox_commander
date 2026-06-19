@@ -2,8 +2,8 @@ import React, { useRef, useEffect } from 'react';
 import { Zap } from 'lucide-react';
 
 export default function TextOutputEditor({ content, onChangeContent, interimTranscript, isListening, addTelemetryLog }) {
-  const textareaRef = useRef(null);
-  const containerRef = useRef(null);
+  const textareaRef = useRef(null); //focusing textarea (if needed later)
+  const containerRef = useRef(null); //scrolling the whole editor container
 
   // Auto-scroll when new text is added
   useEffect(() => {
