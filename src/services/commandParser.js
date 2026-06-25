@@ -85,6 +85,16 @@ export const processTranscriptCommand = ({
     return;
   }
 
+  // 6. command title note
+  if (lowerText === 'command clear title') {
+    setNoteTitle('');
+    setDuration(0);
+    speakFeedback('Title cleared');
+    addTelemetryLog('COMMAND', 'command clear title executed. Title wiped.');
+    setSessionStats(prev => ({ ...prev, commandsExecuted: prev.commandsExecuted + 1 }));
+    return;
+  }
+
   // 6. command clear note
   if (lowerText === 'command clear note') {
     setNoteContent('');

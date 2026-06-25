@@ -5,6 +5,7 @@ const COMMANDS = [
   { phrase: 'INSERT LINE' },
   { phrase: 'ERASE WORD'},
   { phrase: 'TITLE [TEXT]' },
+  { phrase: 'CLEAR TITLE' },
   { phrase: 'TOGGLE THEME' },
   { phrase: 'INSERT DATE' },
   { phrase: 'INSERT TIME' },
